@@ -1,0 +1,525 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>AWS ECS w praktyce</title>
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/league.css" id="theme">
+
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+
+        <section>
+          <h1>AWS Elastic Container Service</h1>
+          <h2>w praktyce</h2>
+          <h3>v1.1.0</h3>
+
+          <aside class="notes">
+          * popatrzymy od strony operatora, a nie developera
+          * tutoriale możecie znaleźć w internecie
+          * jak już wykonamy podstawy to na co zwrócić uwagę
+          </aside>
+        </section>
+
+        <section>
+          <h1>O mnie</h1>
+          <div id="avatar" style="width:200px;float:left;"><img src="img/avatar-small.png" width="150px"/></div>
+          <div id="omnie"  style="margin-left:260px;">
+	          <ul>
+	          <li>System Engineer w Xstream Polska od Listopada 2013</li>
+	          <li>...not ops anymore, but not dev yet...<br/><br/></li>
+	          <li>mail: kaszpir @ gmail</li>
+	          <li>irc: _KaszpiR_</li>
+	          </ul>
+					</div>
+          <aside class="notes">
+	        * pierwszy kontakt z chmurą na początku 2014r
+	        * w okolicy czerwca 2014r przeniesiony do sekcji projektowej
+          * twittera brak, jakoś mnie nie porwał
+          * na githubie się nie spodziewajcie zobaczyć za dużo, ponieważ cała praca leci do prywatnych repozytoriów firmy
+          * najlepiej złapać mnie mailem albo na ircu
+          </aside>
+        </section>
+
+
+        <section data-background-image="img/it.crowd.1.gif">
+          <h1>Skróty</h1>
+        </section>
+
+        <section>
+          <h1>Skróty</h1>
+          <ul>
+          <li>AMI - Amazon Machine Image</li>
+          <li>AWS - Amazon Web Services</li>
+          <li>AZ - Availability Zone</li>
+          <li>ECS - Elastic Container Service</li>
+          <li>ELB - Elastic Load Balancer</li>
+          <li>SG - Security Group</li>
+          <li>VPC - Virtual Private Cloud</li>
+          <li>IAM - Identity Access Management</li>
+          </ul>
+
+          <aside class="notes">
+          * zapytać kto zna albo nie zna AWS
+          * wspomnieć o AWS in plain english
+          </aside>
+        </section>
+
+        <section>
+          <h1>AWS ECS - co to jest?</h1>
+          <ul>
+          <li>usługa do zarządzania kontenerami</li>
+          <li>przejście na ECS gdy Elastic Beanstalk to za mało a AWS Lambda jest za słabe</li>
+          <li>wspiera wyłącznie konteneryzację typu Docker</li>
+          <li>alternatywa dla Kubernetesa czy Docker Swarm</li>
+          <li>integruje się ściśle z ekosystemem AWS</li>
+          <li>procesy ciągle działające procesy czy też jednokrotnego użycia (batch) </li>
+          </ul>
+
+          <aside class="notes">
+          * Beanstalk pozwala na rozstawianie całych środowisk osobno, a nie wielu środowisk na tych samych hostach
+          * Lambda w naszym przypadku okazała się być dobra do przetwarzania kilka razy na godzinę, jak masz 1 req/s to juz lepiej mieć najmniejszą EC2
+          </aside>
+        </section>
+
+        <section>
+          <h1>AWS ECS - limity</h1>
+          <ul>
+          <li>nie wspiera uruchamiania poza AWS</li>
+          <li>nie posiada Service Discovery</li>
+          <li>płacisz tylko za zwykłe używanie instancji EC2 i transfery, sama usługa ECS jest za darmo</li>
+          <li>usługa wymaga VPC</li>
+          <li>nie we wszystkich regionach usługa jest dostępna</li>
+          <li>pamiętaj skąd zasysasz kontenery - internet is slow</li>
+          <li>tip: sprawdź limity EC2 na koncie w danym regionie</li>
+          </ul>
+
+          <aside class="notes">
+          </aside>
+          * Service Discovery trzeba zrobić samemu, np consul
+        </section>
+
+        <section>
+          <h1>Integracja z AWS</h1>
+          <ul>
+          <li>można podłączyć pod ELB</li>
+          <li>IAM per EC2 czy też kontener</li>
+          <li>wskazany autoscaling EC2</li>
+          <li>scaling na podstawie własnych metryk w CloudWatch</li>
+          <li>Elastic Container Registry</li>
+          </ul>
+
+          <aside class="notes">
+          </aside>
+        </section>
+
+        <section>
+          <h1>Integracja poza AWS</h1>
+          <ul>
+          <li>kompatybilność z Docker'em w wersji 1.12.6 (stan na 2017.01.18)</li>
+          <li>komunikacja z DockerHub'em, także prywatne repozytoria</li>
+          <li>tip: to Ty masz się integrować z AWS a nie na odwrót :)</li>
+          </ul>
+
+          <aside class="notes">
+          </aside>
+        </section>
+
+        <section>
+          <h1>Komponenty</h1>
+          <p>
+          <ul>
+          <li>cmdb + api + web</li>
+          <li>klaster</li>
+          <li>zadanie</li>
+          <li>usługa</li>
+          </ul>
+          </p>
+          <img src="img/what.gif"/>
+          <aside class="notes">
+          * czego AWS używa jako kontrolera tasków, to ich know-how
+          </aside>
+        </section>
+
+        <section data-background-image="img/ecs.jpg" data-background-size="contain">
+
+          <aside class="notes">
+          * source: http://pt.slideshare.net/VinothiniRaju/aws-ecs-quick-introduction
+          </aside>
+        </section>
+
+        <section>
+          <h1>Usługa ECS i API</h1>
+          <ul>
+          <li>AWS w swojej infrastrukturze daje panel zarządzania zadaniami, klastrami i usługami</li>
+          <li>web interface albo AWS API, np boto</li>
+          <li>ecs-cli - umie konwertować docker-compose</li>
+          </ul>
+
+          <aside class="notes">
+          * niestety AWS Web ma swoje plusy i minusy, ale ma najwięcej funkcjonalności co do definicji tasków
+          * ecs-cli jest sensowne, ale może mieć problemy z docker-compose v2 głównie z powodu libcompose
+          </aside>
+        </section>
+
+        <section>
+          <h1>Klaster ECS</h1>
+          <ul>
+          <li>grupa instancji EC2</li>
+          <li>sugerowane uruchamianie na AWS Linux AMI ECS Optimized</li>
+          <li>może być inny Linux / Windows</li>
+          <li>autoscaling na poziomie AWS EC2</li>
+          <li>tip: klaster może mieć 0 instancji</li>
+          </ul>
+
+          <aside class="notes">
+          </aside>
+        </section>
+
+        <section>
+          <h1>Klaster ECS</h1>
+          <ul>
+          <li>na każdej instancji EC2 uruchamiana jest usługa Docker'a i kontener z ECS Agentem (linux) lub proces (win)</li>
+          <li>ECS Agent rejestruje się się do wybranego klastra</li>
+          <li>ECS Agent rozmawia z lokalną usługą Dockera - kontroluje cykl życia zadania</li>
+          </ul>
+
+          <aside class="notes">
+          * ECS agent jest na githubie
+          * nie używaliśmy ECS z Windows
+          * sprawdzic: docker privileged, selinux / apparmor? nie pamiętam
+          </aside>
+        </section>
+
+
+        <section>
+          <h1>Zadanie (task)</h1>
+          <ul>
+          <li>zadanie składa się z co najmniej 1 kontenera</li>
+          <li>definicja kontenera odzwierciedla definicję Dockerową</li>
+          <li>zadanie posiada status - aktywny/nieaktywny</li>
+          <li>ograniczenia co do położenia, limity, czy jest krytyczny</li>
+          <li>wersjonowanie - ale uwaga na asynchroniczny web intefrace</li>
+          <li>zadanie można uruchomić na klastrze, albo zamienić w usługę</li>
+          </ul>
+
+          <aside class="notes">
+          * uwaga na zmiany z web, potrafią zamulać i wyświetlić złą definicję taska
+          </aside>
+        </section>
+
+        <section>
+          <h1>Usługa (service)</h1>
+          <ul>
+          <li>usługa składa się z zadania w danej wersji</li>
+          <li>usługa są wersjonowane - więc można zmienić kompletnie definicję między wersjami</li>
+          <li>usługa w danej wersji jest uruchamiana na klastrze</li>
+          <li>usługa ma informacje o ilości jej wystąpień, np multi-az</li>
+          <li>rolling updates z zachowaniem ciągłości pracy</li>
+          </ul>
+
+          <aside class="notes">
+          </aside>
+        </section>
+
+
+        <section data-background-image="img/zoom.out.gif"/>
+          <br/>
+          <br/>
+          <br/>
+          <br/>
+          <h2>
+          Rozstawienie klastra
+          </h2>
+        </section>
+        <section>
+          <h2>Rozstawienie klastra</h2>
+          <ul>
+          <li>instancje - typy instancji, rodzaje dysków</li>
+          <li>ASG - rozmieszczenie AZ, placement-groups, subnety, SG, ACL</li>
+          <li>wybór systemu operacyjnego</li>
+          <li>tuning systemu - ulimit, tcp, kernel...</li>
+          <li>automatyzacja w/w</li>
+          <li>inne zasoby - EFS</li>
+          </ul>
+
+          <aside class="notes">
+          * docker user ulimit
+          * kernel version
+          * disk size - o tym niżej
+          </aside>
+        </section>
+
+
+        <section data-background-image="img/tetris.gif">
+          <h2>Rozstawianie usługi</h2>
+          <ul>
+          <li>czas między uruchomieniem a rejestracją klastra</li>
+          <li>prędkość zasysania kontenerów przez Dockera</li>
+          <li>prędkość zależy od instancji, strefy, regionu</li>
+          <li>czas od aktywacji usługi do jej realnego działania</li>
+          </ul>
+          <br/>
+          <br/>
+          <br/>
+          <aside class="notes">
+          * TODO: wykres z grafany, w sumie to jenkins build + job trime + grafana
+          * TODO: ile realnie zajmuje jenkins build a kiedy działa usługa - grafana
+          * witamy w Singapurze
+          * ecs jest zone aware jak rozstawia instancje usługi
+          </aside>
+        </section>
+
+        <section>
+          <h1>Utrzymanie</h1>
+          <img src="img/drink.gif"/>
+        </section>
+
+        <section>
+          <h1>Utrzymanie...</h1>
+          <ul>
+          <li>uwaga na wersje dockera</li>
+          <li>dyski, dyski, dyski - domyślna wielkość dysków w AWS ECS AMI za mała</li>
+          <li>sprzątanie po dockerze - disk full, wiszące taski deploymentu</li>
+          <li>brak zasobów do rozstawienia usług - np pamięć</li>
+          </ul>
+
+          <aside class="notes">
+          * lvm i blokowanie warstw
+          * bug z dockerem zapychajacym os
+          </aside>
+        </section>
+
+        <section>
+          <h1>Wydajność</h1>
+          <video data-autoplay>
+           <source data-src="img/coon.webm" type="video/webm" />
+           </video>
+        </section>
+        <section>
+          <h1>Wydajność</h1>
+          <ul>
+          <li>domyślna konfiguracja nadaje się na 'hello world'</li>
+          <li>limity na kontener</li>
+          <li>docker --network=host (a wtedy consul registrator jest zbędny)</li>
+          <li>sr-iov czyli bierz nowszy sprzęt</li>
+          <li>nie wsadzaj Javy do kontenera</li>
+          <li>ECS reserved memory i dzięki za OOM killera</li>
+          </ul>
+
+          <aside class="notes">
+          </aside>
+        </section>
+
+        <section>
+          <h1>Koszty</h1>
+          <img src="img/aaarhg.gif"/>
+        </section>
+        <section>
+          <h1>Koszty</h1>
+          <ul>
+          <li>nie używasz, to wyłącz</li>
+          <li>specjalizacja - klaster per usługa</li>
+          <li>ASG i skalowanie w wybranych porach liczby instancji</li>
+          <li>zmiana ilości kontenerów danego typu w zależności od godziny</li>
+          <li>instancje reserved i spot</li>
+          </ul>
+
+          <aside class="notes">
+          </aside>
+        </section>
+
+        <section>
+          <h1>Logowanie i metryki</h1>
+          <img src="img/water.tap.gif"/>
+        </section>
+        <section>
+          <h1>Logowanie i metryki</h1>
+          <ul>
+          <li>logowanie z dockera do hosta</li>
+          <li>CloudWatch Logs i inne</li>
+          <li>CloudTrail</li>
+          <li>zewnętrzne systemy</li>
+          </ul>
+
+          <aside class="notes">
+          * notka, skupiamy się na usługach AWS
+          * saturacja linków, buforowanie wydajności
+          </aside>
+        </section>
+
+
+        <section>
+          <h1>Inne</h1>
+          <ul>
+          <li>consul agent + dhcp client</li>
+          <li>śmierć instancji EC2 i trzymanie stanu w dockerze</li>
+          <li>aplikacje i ELB</li>
+          <li>LATEST EVERYTHING!!!!!!!1111oneeleven</li>
+          </ul>
+          <img src="img/demo.gif"/>
+
+          <aside class="notes">
+          * service discovery - consul
+          * znaleźliśmy kontener ze stanem i 'o jaka szkoda zniknął' ... ;)
+          * elb application, nie używaliśmy bo wtedy tego jeszcze nie było
+          * latest everything to zło, vide docker ubuntu zmienił z 14 na 16, albo php zmienił z 5.5 na 5.6
+          </aside>
+        </section>
+
+
+        <section>
+          <h1>Trochę ...dlaczego?</h1>
+          <img src="img/bender.laugh.gif"/>
+          </ul>
+
+        </section>
+
+        <section>
+          <h1>Trochę ...dlaczego?</h1>
+          <ul>
+          <li>vendor lock z premedytacją</li>
+          <li>agresywny development</li>
+          <li>puppet za wolny i przez to także za drogi</li>
+          <li>multi-tenancy i skalowanie</li>
+          <li>brak czasu - bierzemy to co jest</li>
+          <li>potrzeba lepszej separacji infrastruktury od aplikacji</li>
+          </ul>
+
+          <aside class="notes">
+          * decyzja, że 'tylko AWS' skutecznie ogranicza scope
+          * tworzenie instancji per rola = masa vm = koszty + czas zanim to wstanie
+          * poszukiwanie większego upakowania per instancja
+          * pomysl 1 vm per role jest dobry ale praktycznie wychodzi drogo, a ogranicza cie rezerwacja zasobów których nie używasz
+          </aside>
+        </section>
+
+
+        <section>
+          <h1>Największe problemy</h1>
+          <img src="img/cat.what.gif"/>
+          <aside class="notes">
+          * tak, to jest puszczony filmik od tyłu
+          </aside>
+        </section>
+
+        <section>
+          <h1>Największe problemy</h1>
+          <ul>
+          <li>migracja z EC2 Classic do VPC</li>
+          <li>nowe narzędzia (CloudFormation/docker/Java)</li>
+          <li>nowe warstwy w stosie aplikacji</li>
+          <li>stan wiedzy na temat całości systemu</li>
+          <li>odpowiedzialność</li>
+          <li>utrzymanie kilku różnych wersji infrastruktury i aplikacji</li>
+          </ul>
+
+          <aside class="notes">
+          * redesign całości, czytaj, wiedzieliśmy jak to zrobić drugi raz
+          * warstwy aplikacji w związku z opcjami skalowania i minimalizacji zasięgu w przypadku awarii
+          * IaC, netflix/zuul
+          * separacja kto co robi? raczej synergia
+          * w pewnym momencie mieliśmy 5 rożnych implementacji tej samej funkcjonalności na poziomie implementacji :D
+          * inaczej wygląda infra w zalżności od miejsca w pipeline
+          * * development - docker-compose na laptopie developera
+          * * ci - jenkins node jako vm + docker compose)
+          * * integracji w aws na testingu - ecs + dedykowane instancje rds i inne komponenty raczej jako współdzielone, ew schowane za startymi rozwiązaniami typu cdn to ngixy za elb :D
+          * * produkcja jeszcze inaczej (osobne konto klienta, jedne aplikacje na vm, inne na kontenerach, do tego rds, s3, cf, elb, r53....
+          </aside>
+        </section>
+
+        <section data-background-image="img/fng.jpg">
+          <br/>
+        <br/>
+        <br/>
+        <br/>
+        <br/>
+        <br/>
+        <br/>
+          <h1>Największe sukcesy</h1>
+        </section>
+
+        <section>
+          <h1>Największe sukcesy</h1>
+          <ul>
+          <li>lepsza współpraca w zespołach</li>
+          <li>AWS może być opłacalny ;)</li>
+          <li>wydajność taka jak wcześniej</li>
+          <li>szybsza integracja innych technologii i development</li>
+          </ul>
+
+          <aside class="notes">
+          * lepsze zrozumienie tego jak całość działa, szczególnie ważne przy MTTR
+          * jak się pokręci korbkami to da się wycisnąć tyle kasy aby AWS był opłacalny
+          * szukamy nowych implementacji - np rancher + kubernetes
+          </aside>
+        </section>
+
+        <section>
+          <h1>Co jeszcze kuleje</h1>
+          <img src="img/incidents.gif"/>
+        </section>
+
+        <section>
+          <h1>Co jeszcze kuleje</h1>
+          <ul>
+          <li>docker sam z siebie</li>
+          <li>autoscaling</li>
+          <li>stateful containers</li>
+          <li>java w kontenerze</li>
+          <li>dokładniejsze metryki</li>
+          <li>memento mori</li>
+          </ul>
+
+          <aside class="notes">
+          * docker na jenkins node'ach i jaja z device busy
+          * prędkośc deploymentu
+          * deployment jest płynny przy dużej ilości instancji - im mniej tym bardziej szarpie
+          * wspoldzielony storage, ew kubernetes juz ma takie zabawki
+          * metryki - rozdzielczość 1 min.
+          * memento mori - jeszcze nie mamy automatyzacji wszystkiego i developerzy zapominaja, ze pewne serwery moga byc formatowane bez ich wiedzy, vide jenkins node, za bardzo sie przywyczalili ze tam mozna wejsc, a format kasuje dane z buildow
+          </aside>
+        </section>
+
+        <section>
+          <h1>Pytania?</h1>
+          <img src="img/cat.pole.gif"/>
+          <aside class="notes">
+          </aside>
+        </section>
+
+
+        <section>
+          <h1>Dziękuję za uwagę!</h1>
+          <aside class="notes">
+          </aside>
+        </section>
+
+      </div>
+    </div>
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.js"></script>
+    <script>
+      Reveal.initialize({
+        history: true,
+
+        // More info https://github.com/hakimel/reveal.js#dependencies
+        dependencies: [
+          { src: 'plugin/markdown/marked.js' },
+          { src: 'plugin/markdown/markdown.js' },
+          { src: 'plugin/notes/notes.js', async: true },
+          { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+        ]
+      });
+
+      Reveal.configure({
+        slideNumber: 'c/t',
+      });
+    </script>
+  </body>
+</html>
