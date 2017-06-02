@@ -1,4 +1,4 @@
-# presentations-aws-w-praktyce-pl
+# presentations-aws-ecs-w-praktyce-pl
 Presentation about AWS ECS in practice, in my native language.
 This was done fore SysOps / DevOps Polska meetup #16
 
