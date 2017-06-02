@@ -1,7 +1,8 @@
-# presentations-aws-ecs-w-praktyce-pl
+# Presentations: AWS ECS w praktyce
+
 Presentation about AWS ECS in practice, in my native language.
 This was done fore SysOps / DevOps Polska meetup #16
 
-See index.html for content in web browser (can be local).
+See index.html via [github pages](https://nvtkaszpir.github.io/presentations-aws-ecs-w-praktyce-pl/#/) or locally after checking out repo.
 
-Video from the presentation: https://www.youtube.com/watch?v=FQ9nZXfW3iM
+Video from the presentation: [YouTube](https://www.youtube.com/watch?v=FQ9nZXfW3iM)
